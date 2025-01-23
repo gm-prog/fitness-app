@@ -103,7 +103,7 @@ const LandingPage = () => {
             Ready to Transform Your Fitness Journey?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join thousands of users who have already achieved their fitness goals
+            Join millions of users who have already achieved their fitness goals
           </p>
           <Button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-6 rounded-full text-lg font-semibold">
             Get Started Free
