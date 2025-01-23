@@ -1,7 +1,7 @@
 import React from 'react';
 import { Medal, Users, Brain, Share2, Smartphone, ArrowRight, Activity } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
 
 const LandingPage = () => {
   const features = [
