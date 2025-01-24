@@ -2,8 +2,16 @@ import React from 'react';
 import { Medal, Users, Brain, Share2, Smartphone, ArrowRight, Activity } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import { useNavigate} from 'react-router-dom';
 
 const LandingPage = () => {
+
+  const navigate = useNavigate();//initialize
+
+  const navigateToInfo=()=>{
+    navigate('/info') 
+  }
+
   const features = [
     {
       icon: <Medal className="h-8 w-8 mb-4 text-blue-500" />,
@@ -40,7 +48,9 @@ const LandingPage = () => {
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
               Join the most engaging fitness community. Get personalized AI workouts, compete with friends, and achieve your goals together.
             </p>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-full text-lg font-semibold">
+            <Button 
+            onClick={navigateToInfo}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-full text-lg font-semibold">
               Start Your Journey Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -105,7 +115,8 @@ const LandingPage = () => {
           <p className="text-xl mb-8 opacity-90">
             Join millions of users who have already achieved their fitness goals
           </p>
-          <Button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-6 rounded-full text-lg font-semibold">
+          <Button onClick={navigateToInfo}  className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-6 rounded-full text-lg font-semibold">
+         
             Get Started Free
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
