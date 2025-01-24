@@ -11,21 +11,21 @@ import { useNavigate} from 'react-router-dom';
 const InfoPage = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    name: 'John Doe',
-    age: '28',
-    gender: 'male',
-    location: 'New York, USA',
-    fitnessGoal: 'weightLoss',
-    height: '175',
-    weight: '75',
-    bodyMeasurements: '42-34-38',
-    bodyFatPercentage: '20',
-    activityLevel: 'moderateActivity',
-    dietaryPreferences: 'Vegetarian, low-carb',
-    exerciseHabits: 'Jogging 3 times a week, yoga on weekends',
-    medicalHistory: 'No major illnesses, minor knee injury in 2021',
-    sleepPatterns: '8 hours per night, wakes up at 7 AM',
-    wearableData: 'Average heart rate: 75 bpm, 10,000 steps daily'
+    name: '',
+    age: '',
+    gender: '',
+    location: '',
+    fitnessGoal: '',
+    height: '',
+    weight: '',
+    bodyMeasurements: '',
+    bodyFatPercentage: '',
+    activityLevel: '',
+    dietaryPreferences: '',
+    exerciseHabits: '',
+    medicalHistory: '',
+    sleepPatterns: '',
+    wearableData: ''
   });
   
   const [error, setError] = useState(null); // For error messages
