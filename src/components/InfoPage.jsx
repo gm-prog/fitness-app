@@ -11,21 +11,22 @@ import { useNavigate} from 'react-router-dom';
 const InfoPage = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    gender: '',
-    location: '',
-    fitnessGoal: '',
-    height: '',
-    weight: '',
-    bodyMeasurements: '',
-    bodyFatPercentage: '',
-    activityLevel: '',
-    dietaryPreferences: '',
-    exerciseHabits: '',
-    medicalHistory: '',
-    sleepPatterns: '',
-    wearableData: ''
+    name: 'diya js',
+age: '30',
+gender: 'female',
+location: 'New York, USA',
+fitnessGoal: 'weightLoss',
+height: '180',
+weight: '80',
+bodyMeasurements: 'Chest: 40 in, Waist: 32 in, Hips: 38 in',
+bodyFatPercentage: '18',
+activityLevel: 'Moderately active (3-5 workouts per week)',
+dietaryPreferences: 'High-protein, low-carb diet',
+exerciseHabits: 'Strength training and cardio mix, 4 days per week',
+medicalHistory: 'No chronic conditions, history of mild knee injury',
+sleepPatterns: '6-7 hours per night, working on improving consistency',
+wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
+
   });
   
   const [error, setError] = useState(null); // For error messages
@@ -72,7 +73,7 @@ const InfoPage = () => {
     if (!validateInputs()) return;
   
     try {
-      const baseURI = "https://7jr5h9nt-3000.inc1.devtunnels.ms/ai/generate";
+      const baseURI = "http://localhost:3000/ai/generate";
       const additionalInstructions = `
         Generate a comprehensive, structured health and fitness plan with the following guidelines:
         
