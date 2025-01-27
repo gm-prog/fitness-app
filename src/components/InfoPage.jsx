@@ -5,36 +5,42 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
-import HealthPlanDashboard from './HealthPlanDashboard';
-import { useNavigate} from 'react-router-dom';
- 
-const InfoPage = () => {
-  const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    name: 'diya js',
-age: '30',
-gender: 'female',
-location: 'New York, USA',
-fitnessGoal: 'weightLoss',
-height: '180',
-weight: '80',
-bodyMeasurements: 'Chest: 40 in, Waist: 32 in, Hips: 38 in',
-bodyFatPercentage: '18',
-activityLevel: 'Moderately active (3-5 workouts per week)',
-dietaryPreferences: 'High-protein, low-carb diet',
-exerciseHabits: 'Strength training and cardio mix, 4 days per week',
-medicalHistory: 'No chronic conditions, history of mild knee injury',
-sleepPatterns: '6-7 hours per night, working on improving consistency',
-wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
+import { useNavigate } from 'react-router-dom';
+import { 
+  User, 
+  Calendar, 
+  MapPin, 
+  Target, 
+  Ruler, 
+  Weight, 
+  HeartPulse, 
+  Dumbbell, 
+  BookOpenText, 
+  Moon, 
+  Watch 
+} from 'lucide-react';
 
+const InfoPage = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: 'Samrat Dey',
+    age: '30',
+    gender: 'male',
+    location: 'New York, USA',
+    fitnessGoal: 'weightLoss',
+    height: '185',
+    weight: '90',
+    bodyMeasurements: 'Chest: 56 in, Waist: 40 in, Hips: 46 in',
+    bodyFatPercentage: '18',
+    activityLevel: 'Moderately active (3-5 workouts per week)',
+    dietaryPreferences: 'High-protein, low-carb diet',
+    exerciseHabits: 'Strength training and cardio mix, 4 days per week',
+    medicalHistory: 'No chronic conditions, history of mild knee injury',
+    sleepPatterns: '6-7 hours per night, working on improving consistency',
+    wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
   });
   
-  const [error, setError] = useState(null); // For error messages
-  const [response, setResponse] = useState(null); // For server responses
-
-  const navigateToDashboard=()=>{
-    navigate('/dashboard') 
-  }
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,12 +52,8 @@ wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
 
   const validateInputs = () => {
     const requiredFields = [
-      'name',
-      'age',
-      'gender',
-      'fitnessGoal',
-      'height',
-      'weight',
+      'name', 'age', 'gender', 'fitnessGoal', 
+      'height', 'weight'
     ];
     for (const field of requiredFields) {
       if (!formData[field]) {
@@ -65,13 +67,13 @@ wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
     }
     return true;
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    setResponse(null);
-  
+
     if (!validateInputs()) return;
-  
+
     try {
       const baseURI = "http://localhost:3000/ai/generate";
       const additionalInstructions = `
@@ -86,32 +88,16 @@ wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
         Key Sections:
         1. Profile Overview: Brief summary of user's current health status
         2. Dietary Recommendations
-          - Nutritional strategies
-          - Meal planning advice
-          - Specific food recommendations
         3. Exercise Program
-          - Phased approach
-          - Exercise types and progression
-          - Intensity and frequency guidelines
         4. Lifestyle and Recovery
-          - Sleep optimization
-          - Stress management
-          - Recovery strategies
         5. Monitoring and Adaptation
-          - Progress tracking methods
-          - When and how to adjust the plan
-        
-        Critical Notes:
-        - Strongly recommend professional medical consultation
-        - Provide context-specific, personalized advice
-        - Balance aspirational goals with realistic expectations
       `;
-  
+
       const promptData = {
         ...formData,
         instructions: additionalInstructions,
       };
-  
+
       const response = await fetch(baseURI, {
         method: "POST",
         headers: {
@@ -119,14 +105,13 @@ wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
         },
         body: JSON.stringify({ 
           prompt: JSON.stringify(promptData),
-         
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to fetch data from the server.");
       }
-  
+
       const result = await response.json();
       navigate('/dashboard', { 
         state: { 
@@ -138,218 +123,170 @@ wearableData: 'Average daily steps: 8,000; Resting heart rate: 65 bpm'
       setError(err.message || "An error occurred while submitting the form.");
     }
   };
-  
-  
+
+  const renderInputSection = (label, name, icon, type = 'text', placeholder = '') => (
+    <div className="space-y-2 group">
+      <div className="flex items-center space-x-2 mb-2">
+        {React.cloneElement(icon, {
+          className: "text-primary group-hover:text-primary/70 transition-colors"
+        })}
+        <Label htmlFor={name} className="group-hover:text-primary/70 transition-colors">
+          {label}
+        </Label>
+      </div>
+      <Input
+        id={name}
+        name={name}
+        type={type}
+        value={formData[name]}
+        onChange={handleChange}
+        placeholder={placeholder || `Enter your ${label.toLowerCase()}`}
+        className="w-full border-2 border-gray-200 focus:border-primary transition-all duration-300 hover:shadow-sm"
+      />
+    </div>
+  );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card className="max-w-2xl mx-auto shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold text-center text-primary">
-            Personal Fitness Profile
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-12">
+      <Card className="max-w-4xl mx-auto shadow-2xl rounded-2xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-white p-6">
+          <CardTitle className="text-4xl font-bold text-center flex items-center justify-center space-x-4">
+            <HeartPulse className="w-12 h-12" />
+            <span>Personal Fitness Profile</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-8 space-y-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Information Section */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="age">Age</Label>
-                <Input
-                  id="age"
-                  name="age"
-                  type="number"
-                  value={formData.age}
-                  onChange={handleChange}
-                  placeholder="Your age"
-                  className="w-full"
-                />
-              </div>
+            {/* Personal Information Grid */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {renderInputSection('Name', 'name', <User />, 'text', 'Full Name')}
+              {renderInputSection('Age', 'age', <Calendar />, 'number', 'Your Age')}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2 group">
+                <div className="flex items-center space-x-2 mb-2">
+                  <MapPin className="text-primary group-hover:text-primary/70 transition-colors" />
+                  <Label className="group-hover:text-primary/70 transition-colors">Location</Label>
+                </div>
                 <Select 
-                  name="gender"
-                  value={formData.gender}
-                  onValueChange={(value) => setFormData(prev => ({...prev, gender: value}))}
+                  name="location"
+                  value={formData.location}
+                  onValueChange={(value) => setFormData(prev => ({...prev, location: value}))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select gender" />
+                  <SelectTrigger className="border-2 border-gray-200 focus:border-primary hover:shadow-sm transition-all duration-300">
+                    <SelectValue placeholder="Select Location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="New York, USA">New York, USA</SelectItem>
+                    <SelectItem value="Los Angeles, USA">Los Angeles, USA</SelectItem>
+                    <SelectItem value="Chicago, USA">Chicago, USA</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="City, Country"
-                  className="w-full"
-                />
-              </div>
-            </div>
 
-            {/* Fitness Goals */}
-            <div className="space-y-2">
-              <Label htmlFor="fitnessGoal">Fitness Goal</Label>
-              <Select 
-                name="fitnessGoal"
-                value={formData.fitnessGoal}
-                onValueChange={(value) => setFormData(prev => ({...prev, fitnessGoal: value}))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your primary fitness goal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weightLoss">Weight Loss</SelectItem>
-                  <SelectItem value="muscleGain">Muscle Gain</SelectItem>
-                  <SelectItem value="generalFitness">General Fitness</SelectItem>
-                  <SelectItem value="endurance">Endurance</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2 group">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Target className="text-primary group-hover:text-primary/70 transition-colors" />
+                  <Label className="group-hover:text-primary/70 transition-colors">Fitness Goal</Label>
+                </div>
+                <Select 
+                  name="fitnessGoal"
+                  value={formData.fitnessGoal}
+                  onValueChange={(value) => setFormData(prev => ({...prev, fitnessGoal: value}))}
+                >
+                  <SelectTrigger className="border-2 border-gray-200 focus:border-primary hover:shadow-sm transition-all duration-300">
+                    <SelectValue placeholder="Select Fitness Goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weightLoss">Weight Loss</SelectItem>
+                    <SelectItem value="muscleGain">Muscle Gain</SelectItem>
+                    <SelectItem value="generalFitness">General Fitness</SelectItem>
+                    <SelectItem value="endurance">Endurance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Physical Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="height">Height (cm)</Label>
-                <Input
-                  id="height"
-                  name="height"
-                  type="number"
-                  value={formData.height}
-                  onChange={handleChange}
-                  placeholder="Your height"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="weight">Weight (kg)</Label>
-                <Input
-                  id="weight"
-                  name="weight"
-                  type="number"
-                  value={formData.weight}
-                  onChange={handleChange}
-                  placeholder="Your weight"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bodyFatPercentage">Body Fat %</Label>
-                <Input
-                  id="bodyFatPercentage"
-                  name="bodyFatPercentage"
-                  type="number"
-                  value={formData.bodyFatPercentage}
-                  onChange={handleChange}
-                  placeholder="Body fat %"
-                />
-              </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {renderInputSection('Height (cm)', 'height', <Ruler />, 'number', 'Your Height')}
+              {renderInputSection('Weight (kg)', 'weight', <Weight />, 'number', 'Your Weight')}
+              {renderInputSection('Body Fat %', 'bodyFatPercentage', <HeartPulse />, 'number', 'Body Fat %')}
             </div>
 
-            {/* Additional Details */}
-            <div className="space-y-2">
-              <Label htmlFor="bodyMeasurements">Body Measurements</Label>
-              <Textarea
-                id="bodyMeasurements"
-                name="bodyMeasurements"
-                value={formData.bodyMeasurements}
-                onChange={handleChange}
-                placeholder="Chest, waist, hips, etc."
-                className="min-h-[100px]"
-              />
+            {/* Detailed Inputs with Icons */}
+            <div className="space-y-6">
+              {[
+                { 
+                  name: 'dietaryPreferences', 
+                  label: 'Dietary Preferences', 
+                  icon: <Dumbbell />,
+                  placeholder: 'Describe your diet preferences and restrictions'
+                },
+                { 
+                  name: 'exerciseHabits', 
+                  label: 'Exercise Habits', 
+                  icon: <BookOpenText />,
+                  placeholder: 'Types of exercises, frequency, and intensity'
+                },
+                { 
+                  name: 'medicalHistory', 
+                  label: 'Medical History', 
+                  icon: <HeartPulse />,
+                  placeholder: 'Any medical conditions or injuries'
+                },
+                { 
+                  name: 'sleepPatterns', 
+                  label: 'Sleep Patterns', 
+                  icon: <Moon />,
+                  placeholder: 'Average hours of sleep and quality'
+                },
+                { 
+                  name: 'wearableData', 
+                  label: 'Wearable Data', 
+                  icon: <Watch />,
+                  placeholder: 'Wearable metrics like heart rate or steps'
+                }
+              ].map(({ name, label, icon, placeholder }) => (
+                <div key={name} className="space-y-2 group">
+                  <div className="flex items-center space-x-2 mb-2">
+                    {React.cloneElement(icon, {
+                      className: "text-primary group-hover:text-primary/70 transition-colors"
+                    })}
+                    <Label htmlFor={name} className="group-hover:text-primary/70 transition-colors">
+                      {label}
+                    </Label>
+                  </div>
+                  <Textarea
+                    id={name}
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    placeholder={placeholder}
+                    className="min-h-[120px] border-2 border-gray-200 focus:border-primary transition-all duration-300 hover:shadow-sm"
+                  />
+                </div>
+              ))}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dietaryPreferences">Dietary Preferences</Label>
-              <Textarea
-                id="dietaryPreferences"
-                name="dietaryPreferences"
-                value={formData.dietaryPreferences}
-                onChange={handleChange}
-                placeholder="Describe your diet, preferences, and restrictions"
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="exerciseHabits">Exercise Habits</Label>
-              <Textarea
-                id="exerciseHabits"
-                name="exerciseHabits"
-                value={formData.exerciseHabits}
-                onChange={handleChange}
-                placeholder="Types of exercises, frequency, and intensity"
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="medicalHistory">Medical History</Label>
-              <Textarea
-                id="medicalHistory"
-                name="medicalHistory"
-                value={formData.medicalHistory}
-                onChange={handleChange}
-                placeholder="Any medical conditions or injuries"
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sleepPatterns">Sleep Patterns</Label>
-              <Textarea
-                id="sleepPatterns"
-                name="sleepPatterns"
-                value={formData.sleepPatterns}
-                onChange={handleChange}
-                placeholder="Average hours of sleep and quality"
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="wearableData">Wearable Data</Label>
-              <Textarea
-                id="wearableData"
-                name="wearableData"
-                value={formData.wearableData}
-                onChange={handleChange}
-                placeholder="Wearable metrics like heart rate or steps"
-                className="min-h-[100px]"
-              />
-            </div>
-
+            {/* Submit Button with Animation */}
             <div className="flex justify-center">
-              <Button
-              
-              type="submit" className="w-full max-w-md">
+              <Button 
+                type="submit" 
+                className="w-full max-w-md bg-gradient-to-r from-primary to-primary/80 hover:from-primary/80 hover:to-primary transition-all duration-300 transform hover:scale-105"
+              >
                 Save Profile
               </Button>
             </div>
           </form>
-          {error && <p className="text-red-600 text-center mt-4">{error}</p>}
-          
 
+          {/* Error Handling */}
+          {error && (
+            <div className="text-center mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+              <p className="text-red-600 font-semibold">{error}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
