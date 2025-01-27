@@ -10,8 +10,8 @@ const sectionTitles = [
   "Introduction",
   "Dietary Plan",
   "Exercise Plan",
-  "Sleep and Recovery",
-  "Monitoring and Follow-Up",
+  "Sleep Cycle",
+  "Monitoring",
 ]
 
 async function generateSectionContent(title, userInput) {
@@ -23,8 +23,8 @@ async function generateSectionContent(title, userInput) {
     "Introduction": `Provide a comprehensive overview and context for the health plan based on the user's profile: ${userInput}`,
     "Dietary Plan": `Create a detailed, personalized dietary recommendation based on the user's nutritional needs and preferences: ${userInput}`,
     "Exercise Plan": `Develop a tailored exercise program considering the user's fitness goals, current fitness level, and any health constraints: ${userInput}`,
-    "Sleep and Recovery": `Design a comprehensive sleep and recovery strategy that addresses the user's current sleep patterns, lifestyle, and health goals: ${userInput}`,
-    "Monitoring and Follow-Up": `Create a systematic approach for tracking progress, making adjustments, and ensuring long-term success of the health plan: ${userInput}`
+    "Sleep Cycle": `Design a comprehensive sleep and recovery strategy that addresses the user's current sleep patterns, lifestyle, and health goals: ${userInput}`,
+    "Monitoring": `Create a systematic approach for tracking progress, making adjustments, and ensuring long-term success of the health plan: ${userInput}`
   }
 
   const prompt = sectionPrompts[title] || `Generate a detailed health plan section for "${title}" based on the following user input: ${userInput}`
@@ -114,7 +114,7 @@ router.post("/generate", async (req, res) => {
     if (sectionResults.length !== sectionTitles.length) {
       console.warn("Not all sections were generated successfully")
     }
-
+  
     res.json({ 
       content: fullResponse,
       sections: sectionTitles.length,
