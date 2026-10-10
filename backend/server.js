@@ -1,18 +1,19 @@
-require("dotenv").config();
+// Load .env from an explicit absolute path (this directory) so configuration is
+// found no matter which working directory the process is started from.
+require("dotenv").config({ path: require("path").resolve(__dirname, ".env") });
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
-const authRouter = require("./routers/auth");
-const profileRouter = require("./routers/profiles");
-const aiRouter = require("./routers/ai");
 const logger = require("./utils/logger");
 const { handleError } = require("./utils/errorHandler");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MONGO_URI = process.env.MONGO_URI;
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
+const HF_MODEL = process.env.HF_MODEL || "mistralai/Mistral-7B-Instruct-v0.3";
+const HF_PROVIDER = process.env.HF_PROVIDER || "auto";
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 if (!MONGO_URI) {
@@ -20,10 +21,18 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-if (!GOOGLE_API_KEY) {
-  logger.error("GOOGLE_API_KEY is required. Add it to your backend .env file.");
+if (!HUGGINGFACE_API_KEY) {
+  logger.error(
+    "HUGGINGFACE_API_KEY is required. Add it to your backend .env file. Create a token at https://huggingface.co/settings/tokens"
+  );
   process.exit(1);
 }
+
+// Loaded only after configuration is validated, so startup failures report the
+// missing variable cleanly instead of surfacing a router-level stack trace.
+const authRouter = require("./routers/auth");
+const profileRouter = require("./routers/profiles");
+const aiRouter = require("./routers/ai");
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:3000")
   .split(",")
@@ -34,6 +43,10 @@ logger.info("Server Configuration", {
   port: PORT,
   env: NODE_ENV,
   allowedOrigins,
+  aiProvider: "huggingface",
+  hfModel: HF_MODEL,
+  hfProvider: HF_PROVIDER,
+  // the API key itself is never logged
 });
 
 const corsOptions = {
