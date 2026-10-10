@@ -1,5 +1,7 @@
 // server.js
-require('dotenv').config();
+// Load .env from an explicit absolute path (this directory) so configuration is
+// found no matter which working directory the process is started from.
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
@@ -15,9 +17,13 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Database Connection
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('Error connecting to MongoDB:', err));
+if (!MONGO_URI) {
+  console.error('MONGO_URI is required. Add it to backend/.env (e.g. MONGO_URI=mongodb://localhost:27017/fitness-app).');
+} else {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('Error connecting to MongoDB:', err.message));
+}
 
 // Routes
 app.use('/ai', aiRouter);
