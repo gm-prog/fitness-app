@@ -1,19 +1,9 @@
-require("dotenv").config({ path: require("path").resolve(__dirname, "..", ".env") })
+require("dotenv").config()
 const express = require("express")
 const { GoogleGenerativeAI } = require("@google/generative-ai")
 const router = express.Router()
 
-// Validate the Gemini configuration at load time.
-// The key value is never logged or included in responses.
-const googleApiKey = process.env.GOOGLE_API_KEY
-
-if (!googleApiKey) {
-  throw new Error(
-    "GOOGLE_API_KEY is required. Add it to backend/.env (e.g. GOOGLE_API_KEY=your_key) and restart the server."
-  )
-}
-
-const genAI = new GoogleGenerativeAI(googleApiKey)
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
 const sectionTitles = [
@@ -73,13 +63,9 @@ async function generateSectionContent(title, userInput) {
       safetySettings
     })
 
-    // text() throws when the response was blocked or empty, so guard it
-    let responseText = ''
-    try {
-      responseText = result.response?.text?.() || ''
-    } catch (textError) {
-      console.error(`Could not read text for "${title}":`, textError.message)
-    }
+    // Detailed logging and validation
+    const responseText = result.response?.text() || ''
+    console.log(`Generated content for ${title}:`, responseText.slice(0, 200) + '...') // Log first 200 chars
 
     if (!responseText) {
       throw new Error(`No response generated for "${title}"`)
@@ -87,10 +73,12 @@ async function generateSectionContent(title, userInput) {
 
     return `**${title}**\n\n${responseText}`
   } catch (error) {
-    // Enhanced error logging (never logs the API key or the full profile payload)
+    // Enhanced error logging
     console.error(`Detailed error generating content for "${title}":`, {
       message: error.message,
-      title: title
+      stack: error.stack,
+      title: title,
+      userInput: userInput
     })
 
     // Provide a meaningful fallback
@@ -99,7 +87,8 @@ async function generateSectionContent(title, userInput) {
 }
 
 router.post("/generate", async (req, res) => {
-  const { prompt } = req.body || {}
+  const { prompt } = req.body
+  console.log("Full request received:", JSON.stringify(prompt).slice(0, 500)) // Log first 500 chars of prompt
 
   if (!prompt) {
     return res.status(400).json({ error: "Comprehensive user profile prompt is required" })
@@ -126,8 +115,7 @@ router.post("/generate", async (req, res) => {
       console.warn("Not all sections were generated successfully")
     }
   
-    // Response shape unchanged: src/components/InfoPage.jsx reads `result.content`
-    return res.json({ 
+    res.json({ 
       content: fullResponse,
       sections: sectionTitles.length,
       generatedSections: sectionResults.length
@@ -137,7 +125,7 @@ router.post("/generate", async (req, res) => {
       message: error.message,
       stack: error.stack
     })
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: "Comprehensive content generation failed", 
       details: error.message 
     })
