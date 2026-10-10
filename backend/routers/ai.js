@@ -25,18 +25,64 @@ const router = express.Router();
 // ---------------------------------------------------------------------------
 const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
-// Model is configurable so you can switch to any model your token can access
-// and that the selected provider supports. Non-gated, broadly supported
-// alternatives: Qwen/Qwen2.5-72B-Instruct, Qwen/Qwen2.5-7B-Instruct,
-// mistralai/Mistral-7B-Instruct-v0.3, HuggingFaceH4/zephyr-7b-beta
-const HF_MODEL = (process.env.HF_MODEL || "mistralai/Mistral-7B-Instruct-v0.3").trim();
+// Model is configurable. It MUST list at least one Inference Provider on its
+// Hugging Face model page, otherwise every request fails with
+// "We have not been able to find inference provider information for model ...".
+// Verified default: Qwen/Qwen3-4B-Instruct-2507 is served by Nscale
+// (text-generation). Check the "Inference Providers" section of a model page
+// before switching.
+const HF_MODEL = (process.env.HF_MODEL || "Qwen/Qwen3-4B-Instruct-2507").trim();
 
-// "auto" lets Hugging Face pick the best available provider for the model.
-// You can pin one instead, e.g. together, fal-ai, nebius, groq, hf-inference.
+// "auto" asks Hugging Face to pick an available provider for the model. Because
+// Nscale is the only provider currently serving the default model, "auto"
+// resolves to it. Set HF_PROVIDER=nscale to pin it explicitly.
 const HF_PROVIDER = (process.env.HF_PROVIDER || "auto").trim();
 
-const HF_MAX_TOKENS = Number.parseInt(process.env.HF_MAX_TOKENS || "2000", 10);
-const HF_TEMPERATURE = Number.parseFloat(process.env.HF_TEMPERATURE || "0.7");
+// Numeric settings are validated so a typo fails loudly at startup instead of
+// silently becoming NaN and being sent to the API.
+const readNumberSetting = (name, fallback, { min, max, integer }) => {
+  const raw = process.env[name];
+
+  if (raw === undefined || String(raw).trim() === "") {
+    return fallback;
+  }
+
+  const trimmed = String(raw).trim();
+
+  if (integer ? !/^-?\d+$/.test(trimmed) : !/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    throw new Error(
+      `${name} must be ${integer ? "a whole number" : "a number"}. Received "${raw}". ` +
+        `Set a valid value in backend/.env or remove it to use the default (${fallback}).`
+    );
+  }
+
+  const value = integer ? Number.parseInt(trimmed, 10) : Number.parseFloat(trimmed);
+
+  if (!Number.isFinite(value)) {
+    throw new Error(
+      `${name} must be a finite number. Received "${raw}". Remove it to use the default (${fallback}).`
+    );
+  }
+
+  if (value < min || value > max) {
+    throw new Error(
+      `${name} must be between ${min} and ${max}. Received ${value}. ` +
+        `Remove it to use the default (${fallback}).`
+    );
+  }
+
+  return value;
+};
+
+const HF_MAX_TOKENS = readNumberSetting("HF_MAX_TOKENS", 2000, {
+  min: 1,
+  max: 8192,
+  integer: true,
+});
+const HF_TEMPERATURE = readNumberSetting("HF_TEMPERATURE", 0.7, { min: 0, max: 2 });
+
+// Sampling defaults follow the Qwen3 model card (temperature 0.7, top_p 0.8).
+const HF_TOP_P = 0.8;
 
 const MAX_PROMPT_LENGTH = 20000;
 
@@ -132,7 +178,7 @@ async function generateSectionContent(title, userInput) {
       ],
       max_tokens: HF_MAX_TOKENS,
       temperature: HF_TEMPERATURE,
-      top_p: 0.9,
+      top_p: HF_TOP_P,
     });
 
     const content = extractContent(chatCompletion);

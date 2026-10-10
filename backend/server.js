@@ -12,7 +12,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MONGO_URI = process.env.MONGO_URI;
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-const HF_MODEL = process.env.HF_MODEL || "mistralai/Mistral-7B-Instruct-v0.3";
+const HF_MODEL = process.env.HF_MODEL || "Qwen/Qwen3-4B-Instruct-2507";
 const HF_PROVIDER = process.env.HF_PROVIDER || "auto";
 const NODE_ENV = process.env.NODE_ENV || "development";
 
@@ -30,9 +30,20 @@ if (!HUGGINGFACE_API_KEY) {
 
 // Loaded only after configuration is validated, so startup failures report the
 // missing variable cleanly instead of surfacing a router-level stack trace.
-const authRouter = require("./routers/auth");
-const profileRouter = require("./routers/profiles");
-const aiRouter = require("./routers/ai");
+// Router modules also validate their own settings (e.g. HF_MAX_TOKENS), so a
+// misconfiguration is reported as a one-line error rather than a stack trace.
+let authRouter;
+let profileRouter;
+let aiRouter;
+
+try {
+  authRouter = require("./routers/auth");
+  profileRouter = require("./routers/profiles");
+  aiRouter = require("./routers/ai");
+} catch (error) {
+  logger.error(`Startup failed while loading routers: ${error.message}`);
+  process.exit(1);
+}
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:3000")
   .split(",")
