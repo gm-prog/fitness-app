@@ -6,6 +6,8 @@ const rateLimit = require("express-rate-limit");
 const authRouter = require("./routers/auth");
 const profileRouter = require("./routers/profiles");
 const aiRouter = require("./routers/ai");
+const logger = require("./utils/logger");
+const { handleError } = require("./utils/errorHandler");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -14,11 +16,13 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 if (!MONGO_URI) {
-  throw new Error("MONGO_URI is required. Add it to your backend .env file.");
+  logger.error("MONGO_URI is required. Add it to your backend .env file.");
+  process.exit(1);
 }
 
 if (!GOOGLE_API_KEY) {
-  throw new Error("GOOGLE_API_KEY is required. Add it to your backend .env file.");
+  logger.error("GOOGLE_API_KEY is required. Add it to your backend .env file.");
+  process.exit(1);
 }
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:3000")
@@ -26,12 +30,19 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173,ht
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+logger.info("Server Configuration", {
+  port: PORT,
+  env: NODE_ENV,
+  allowedOrigins,
+});
+
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
+    logger.warn(`CORS blocked for origin: ${origin}`);
     callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
@@ -45,6 +56,7 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests. Please try again later." },
+  skip: (req) => req.path === "/health",
 });
 
 const authLimiter = rateLimit({
@@ -74,7 +86,11 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString(),
     service: "fitness-app-backend",
     environment: NODE_ENV,
-    uptime: process.uptime(),
+    uptime: Math.round(process.uptime()),
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + " MB",
+    },
   });
 });
 
@@ -82,21 +98,17 @@ app.use("/auth", authLimiter, authRouter);
 app.use("/profiles", profileRouter);
 app.use("/ai", aiLimiter, aiRouter);
 
-app.use((err, _req, res, _next) => {
-  console.error("Unhandled server error:", err);
-
-  if (err.message && err.message.includes("CORS")) {
-    return res.status(403).json({
-      error: "CORS policy violation",
-      message: err.message,
-    });
-  }
-
-  res.status(err.status || 500).json({
-    error: "Internal server error",
-    message: NODE_ENV === "development" ? err.message : "Something went wrong",
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not found",
+    path: req.path,
+    method: req.method,
   });
 });
+
+// Error handler middleware
+app.use(handleError);
 
 const startServer = async () => {
   try {
@@ -105,16 +117,25 @@ const startServer = async () => {
       connectTimeoutMS: 10000,
     });
 
-    console.log("Connected to MongoDB");
+    logger.info("Connected to MongoDB");
 
     app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
-      console.log(`Environment: ${NODE_ENV}`);
+      logger.info(`Server is running on http://localhost:${PORT}`);
+      logger.info(`Health check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logger.error("Failed to start server", {
+      message: error.message,
+      stack: error.stack,
+    });
     process.exit(1);
   }
 };
 
 startServer();
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info("SIGTERM received. Shutting down gracefully...");
+  process.exit(0);
+});
