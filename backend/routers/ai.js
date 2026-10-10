@@ -1,10 +1,18 @@
-require("dotenv").config()
-const express = require("express")
-const { GoogleGenerativeAI } = require("@google/generative-ai")
-const router = express.Router()
+require("dotenv").config();
+const express = require("express");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const HealthPlan = require("../models/HealthPlan");
+const { authMiddleware } = require("../middleware/auth");
+const router = express.Router();
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+const googleApiKey = process.env.GOOGLE_API_KEY;
+
+if (!googleApiKey) {
+  throw new Error("GOOGLE_API_KEY is required. Add it to your backend .env file.");
+}
+
+const genAI = new GoogleGenerativeAI(googleApiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const sectionTitles = [
   "Introduction",
@@ -12,124 +20,198 @@ const sectionTitles = [
   "Exercise Plan",
   "Sleep Cycle",
   "Monitoring",
-]
+];
+
+const MAX_PROMPT_LENGTH = 20000;
+
+const normalizePrompt = (input) => {
+  if (typeof input === "string") {
+    return input.trim();
+  }
+
+  if (input && typeof input === "object") {
+    return JSON.stringify(input);
+  }
+
+  return "";
+};
 
 async function generateSectionContent(title, userInput) {
-  // Enhanced logging and error handling
   console.log(`Generating content for section: ${title}`);
-  
-  // Specific, detailed prompts for each section
+
   const sectionPrompts = {
-    "Introduction": `Provide a comprehensive overview and context for the health plan based on the user's profile: ${userInput}`,
+    Introduction: `Provide a comprehensive overview and context for the health plan based on the user's profile: ${userInput}`,
     "Dietary Plan": `Create a detailed, personalized dietary recommendation based on the user's nutritional needs and preferences: ${userInput}`,
     "Exercise Plan": `Develop a tailored exercise program considering the user's fitness goals, current fitness level, and any health constraints: ${userInput}`,
     "Sleep Cycle": `Design a comprehensive sleep and recovery strategy that addresses the user's current sleep patterns, lifestyle, and health goals: ${userInput}`,
-    "Monitoring": `Create a systematic approach for tracking progress, making adjustments, and ensuring long-term success of the health plan: ${userInput}`
-  }
+    Monitoring: `Create a systematic approach for tracking progress, making adjustments, and ensuring long-term success of the health plan: ${userInput}`,
+  };
 
-  const prompt = sectionPrompts[title] || `Generate a detailed health plan section for "${title}" based on the following user input: ${userInput}`
+  const prompt = sectionPrompts[title] || `Generate a detailed health plan section for "${title}" based on the following user input: ${userInput}`;
 
   try {
-    // Increased timeout and safety settings
     const generationConfig = {
       maxOutputTokens: 2000,
       temperature: 0.7,
       topP: 0.9,
       topK: 40,
-    }
+    };
 
     const safetySettings = [
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_NONE'
-      },
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_NONE'
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_NONE'
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_NONE'
-      }
-    ]
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+    ];
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
-      safetySettings
-    })
+      safetySettings,
+    });
 
-    // Detailed logging and validation
-    const responseText = result.response?.text() || ''
-    console.log(`Generated content for ${title}:`, responseText.slice(0, 200) + '...') // Log first 200 chars
+    const responseText = result.response?.text?.() || "";
 
     if (!responseText) {
-      throw new Error(`No response generated for "${title}"`)
+      throw new Error(`No response generated for "${title}"`);
     }
 
-    return `**${title}**\n\n${responseText}`
+    return responseText;
   } catch (error) {
-    // Enhanced error logging
-    console.error(`Detailed error generating content for "${title}":`, {
+    console.error(`Error generating content for "${title}":`, {
       message: error.message,
-      stack: error.stack,
-      title: title,
-      userInput: userInput
-    })
-
-    // Provide a meaningful fallback
-    return `**${title}**\n\nUnable to generate content for this section. Possible reasons:\n- Network issues\n- API limitations\n- Temporary service unavailability\n\nPlease try again later or contact support.`
+      title,
+    });
+    throw error;
   }
 }
 
-router.post("/generate", async (req, res) => {
-  const { prompt } = req.body
-  console.log("Full request received:", JSON.stringify(prompt).slice(0, 500)) // Log first 500 chars of prompt
+router.post("/generate", authMiddleware, async (req, res) => {
+  const rawPrompt = req.body?.prompt;
+  const prompt = normalizePrompt(rawPrompt);
+  const profileId = req.body?.profileId || null;
 
   if (!prompt) {
-    return res.status(400).json({ error: "Comprehensive user profile prompt is required" })
+    return res.status(400).json({
+      error: "A user profile prompt is required.",
+    });
+  }
+
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    return res.status(413).json({
+      error: "Prompt is too large. Please reduce the length of the profile data.",
+    });
   }
 
   try {
-    // Sequential processing with timeout to handle potential API constraints
-    const sectionResults = []
+    const sectionContents = {};
+    const sectionResults = [];
+
     for (const title of sectionTitles) {
       try {
-        const sectionContent = await generateSectionContent(title, prompt)
-        sectionResults.push(sectionContent)
+        const sectionContent = await generateSectionContent(title, prompt);
+        const normalizedTitle = title.toLowerCase().replace(/\s+/g, "");
+        sectionContents[normalizedTitle] = sectionContent;
+        sectionResults.push(`**${title}**\n\n${sectionContent}`);
       } catch (sectionError) {
-        console.error(`Error processing section "${title}":`, sectionError)
-        sectionResults.push(`**${title}**\n\nSection generation failed. Please retry.`)
+        console.error(`Error processing section "${title}":`, sectionError);
+        sectionResults.push(`**${title}**\n\nSection generation failed. Please retry.`);
       }
     }
 
-    // Validate response before sending
-    const fullResponse = sectionResults.join("\n\n")
-    console.log("Final response sections count:", sectionResults.length)
+    const fullResponse = sectionResults.join("\n\n");
 
-    if (sectionResults.length !== sectionTitles.length) {
-      console.warn("Not all sections were generated successfully")
-    }
-  
-    res.json({ 
+    const healthPlan = new HealthPlan({
+      userId: req.userId,
+      profileId,
       content: fullResponse,
-      sections: sectionTitles.length,
-      generatedSections: sectionResults.length
-    })
-  } catch (error) {
-    console.error("Comprehensive error in generate endpoint:", {
-      message: error.message,
-      stack: error.stack
-    })
-    res.status(500).json({ 
-      error: "Comprehensive content generation failed", 
-      details: error.message 
-    })
-  }
-})
+      sections: {
+        introduction: sectionContents.introduction || null,
+        dietaryPlan: sectionContents.dietaryplan || null,
+        exercisePlan: sectionContents.exerciseplan || null,
+        sleepCycle: sectionContents.sleepcycle || null,
+        monitoring: sectionContents.monitoring || null,
+      },
+    });
 
-module.exports = router
+    await healthPlan.save();
+
+    return res.status(200).json({
+      message: "Health plan generated and saved successfully",
+      plan: {
+        id: healthPlan._id,
+        content: fullResponse,
+        sections: sectionTitles.length,
+        generatedSections: sectionResults.length,
+        generatedAt: healthPlan.generatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error in generate endpoint:", error);
+    return res.status(500).json({
+      error: "Content generation failed.",
+      details: error.message,
+    });
+  }
+});
+
+router.get("/plans", authMiddleware, async (req, res) => {
+  try {
+    const plans = await HealthPlan.find({ userId: req.userId, isActive: true })
+      .sort({ generatedAt: -1 })
+      .limit(50);
+
+    return res.status(200).json({
+      plans,
+      total: plans.length,
+    });
+  } catch (error) {
+    console.error("Get plans error:", error);
+    return res.status(500).json({
+      error: "Failed to fetch health plans",
+      details: error.message,
+    });
+  }
+});
+
+router.get("/plans/:id", authMiddleware, async (req, res) => {
+  try {
+    const plan = await HealthPlan.findOne({ _id: req.params.id, userId: req.userId });
+
+    if (!plan) {
+      return res.status(404).json({ error: "Health plan not found" });
+    }
+
+    return res.status(200).json({ plan });
+  } catch (error) {
+    console.error("Get plan error:", error);
+    return res.status(500).json({
+      error: "Failed to fetch health plan",
+      details: error.message,
+    });
+  }
+});
+
+router.delete("/plans/:id", authMiddleware, async (req, res) => {
+  try {
+    const plan = await HealthPlan.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!plan) {
+      return res.status(404).json({ error: "Health plan not found" });
+    }
+
+    return res.status(200).json({ message: "Health plan deleted successfully" });
+  } catch (error) {
+    console.error("Delete plan error:", error);
+    return res.status(500).json({
+      error: "Failed to delete health plan",
+      details: error.message,
+    });
+  }
+});
+
+module.exports = router;
