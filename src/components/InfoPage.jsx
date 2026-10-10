@@ -17,8 +17,11 @@ import {
   Dumbbell, 
   BookOpenText, 
   Moon, 
-  Watch 
+  Watch,
+  AlertCircle,
+  LogOut
 } from 'lucide-react';
+import apiClient from '../lib/apiClient';
 
 const InfoPage = () => {
   const navigate = useNavigate();
@@ -41,6 +44,7 @@ const InfoPage = () => {
   });
   
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,8 +78,9 @@ const InfoPage = () => {
 
     if (!validateInputs()) return;
 
+    setLoading(true);
+
     try {
-      const baseURI = "http://localhost:3000/ai/generate";
       const additionalInstructions = `
         Generate a comprehensive, structured health and fitness plan with the following guidelines:
         
@@ -98,30 +103,27 @@ const InfoPage = () => {
         instructions: additionalInstructions,
       };
 
-      const response = await fetch(baseURI, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          prompt: JSON.stringify(promptData),
-        }),
+      const response = await apiClient.post('/ai/generate', { 
+        prompt: JSON.stringify(promptData),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch data from the server.");
-      }
-
-      const result = await response.json();
       navigate('/dashboard', { 
         state: { 
-          healthPlanResponse: result.content,
-          userProfile: formData 
+          healthPlanResponse: response.plan.content,
+          userProfile: formData,
+          planId: response.plan.id
         } 
       });
     } catch (err) {
-      setError(err.message || "An error occurred while submitting the form.");
+      setError(err.message || "An error occurred while generating the plan. Please try again.");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    apiClient.setToken(null);
+    navigate('/login');
   };
 
   const renderInputSection = (label, name, icon, type = 'text', placeholder = '') => (
@@ -149,11 +151,19 @@ const InfoPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-12">
       <Card className="max-w-4xl mx-auto shadow-2xl rounded-2xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-white p-6">
-          <CardTitle className="text-4xl font-bold text-center flex items-center justify-center space-x-4">
+        <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-white p-6 flex items-center justify-between">
+          <CardTitle className="text-4xl font-bold flex items-center space-x-4">
             <HeartPulse className="w-12 h-12" />
             <span>Personal Fitness Profile</span>
           </CardTitle>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="bg-white/20 hover:bg-white/30 text-white border-white"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
         </CardHeader>
         <CardContent className="p-8 space-y-8">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -273,17 +283,19 @@ const InfoPage = () => {
             {/* Submit Button with Animation */}
             <div className="flex justify-center">
               <Button 
-                type="submit" 
+                type="submit"
+                disabled={loading}
                 className="w-full max-w-md bg-gradient-to-r from-primary to-primary/80 hover:from-primary/80 hover:to-primary transition-all duration-300 transform hover:scale-105"
               >
-                Save Profile
+                {loading ? 'Generating Plan...' : 'Generate Health Plan'}
               </Button>
             </div>
           </form>
 
           {/* Error Handling */}
           {error && (
-            <div className="text-center mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+            <div className="text-center mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-red-600 font-semibold">{error}</p>
             </div>
           )}
